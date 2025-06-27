@@ -39,7 +39,10 @@ int main() {
 
       if (command == "cat" or command == "cp" or command == "mkdir")
       {
-        std::cout << command << " is /bin/" << command << '\n';
+        if (std::filesystem::exists("/usr/bin/cat"))
+          std::cout << command << " is /usr/bin/" << command << '\n';
+        else
+          std::cout << command << " is /bin/" << command << '\n';
         continue;
       }
       if (command == "my_exe")
