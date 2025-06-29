@@ -2,6 +2,10 @@
 #include <string>
 #include <string_view>
 #include <filesystem>
+#include <ranges>
+#include <format>
+#include <unistd.h>
+#include <stdlib.h>
 
 int main() {
   // Flush after every std::cout / std:cerr
@@ -31,7 +35,7 @@ int main() {
 
       auto command = input.substr(pos + 1);
 
-      if (command == "echo" or command == "exit" or command == "type")
+      if (command == "echo" or command == "exit" or command == "type" or command == "pwd")
       {
         std::cout << command << " is a shell builtin" << '\n';
         continue;
@@ -59,10 +63,47 @@ int main() {
     if (input == "exit 0")
       return 0;
 
+    if (first_token == "cd")
+    {
+        auto target_dir = input.substr(3);
+        if (!std::filesystem::exists(target_dir) and target_dir != "~")
+        {
+            // println("cd: {}: No such file or directory", target_dir);
+            printf("cd: %s: No such file or directory\n", target_dir.c_str());
+            continue;
+        }
+
+        if (chdir(target_dir.c_str()) == 0)
+        { 
+            auto this_path = std::filesystem::current_path().string();
+            if (this_path.starts_with("/private"))
+            {
+                this_path = this_path.substr(8);
+            }
+            setenv("PWD", this_path.c_str(), 1);
+        }
+        continue;
+    }
+    if (first_token == "echo" or first_token == "exit" or first_token == "type" or first_token == "pwd")
+    {
+      std::system(input.c_str());
+      continue;
+    }
+      
+
+        
+    bool bin_exist = false;
     std::string env_path(std::getenv("PATH"));
-    auto bin_dir = env_path.substr(0, env_path.find(':', 0));
-    std::string bin_path = bin_dir + "/" + first_token;
-    if (std::filesystem::exists(bin_path))
+    for (const auto word: std::views::split(env_path, ':'))
+    { 
+        auto bin_path = std::format("{}/{}", std::string_view(word), first_token);
+        if (std::filesystem::exists(bin_path))
+        { 
+        	bin_exist = true;
+          break;
+        }
+    }
+    if (bin_exist)
     {
       std::system(input.c_str());
       continue;
