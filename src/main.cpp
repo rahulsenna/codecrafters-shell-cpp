@@ -79,7 +79,10 @@ int main() {
     if (first_token == "cd")
     {
         auto target_dir = input.substr(3);
-        if (!std::filesystem::exists(target_dir) and target_dir != "~")
+        if (target_dir  == "~")
+        	target_dir = std::getenv("HOME");
+        
+        if (!std::filesystem::exists(target_dir))
         {
             // println("cd: {}: No such file or directory", target_dir);
             printf("cd: %s: No such file or directory\n", target_dir.c_str());
