@@ -25,7 +25,25 @@ int main() {
 
     if (first_token == "echo")
     {
-      std::cout << input.substr(pos + 1) << '\n';
+      auto line = input.substr(pos + 1);
+      int quote_cnt = 0;
+      bool in_single_quote = 0;
+      char prev = 0;
+      for (auto c : line)
+      {
+        if (c == '\'')
+        {
+          quote_cnt++;
+          in_single_quote = !(quote_cnt % 2 == 0);
+          continue;
+        }
+        if (not in_single_quote && c == ' ' and prev == ' ')
+          continue;
+
+        putchar(c);
+        prev = c;
+      }
+      std::cout << '\n';
       continue;
     }
 
