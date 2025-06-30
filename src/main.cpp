@@ -51,8 +51,21 @@ int main() {
       }
       if (command == "my_exe")
       {
-        std::string_view path(std::getenv("PATH"));
-        std::cout << command << " is " << path.substr(0, path.find(':', 0)) << '/' << command << '\n';
+        std::string env_path(std::getenv("PATH"));
+        for (const auto word: std::views::split(env_path, ':'))
+        { 
+            auto file_path = std::format("{}/my_exe", std::string_view(word));
+            if (std::filesystem::exists(file_path))
+            {
+              auto p = std::filesystem::status(file_path).permissions();
+              if ((p & std::filesystem::perms::owner_exec) != std::filesystem::perms::none ||
+                  (p & std::filesystem::perms::group_exec) != std::filesystem::perms::none)
+              {
+                std::cout << command << " is " << file_path << '\n';
+                break;
+              }
+            }
+        }
         continue;
       }
 
