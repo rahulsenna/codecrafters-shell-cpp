@@ -32,14 +32,20 @@ int main()
       first_token = input.substr(1, pos - 1);
     }
 
-    if (first_token == "echo")
-    {
-      auto line = input.substr(pos + 1);
-      int single_quote_cnt = 0;
-      bool in_single_quote = 0;
+    int redirect_out = input.find('>');
+    std::string_view outfile = "";
+    if (redirect_out != -1)
+        outfile = std::string_view(input.begin()+redirect_out+2, input.end());
 
-      int double_quote_cnt = 0;
+    if (first_token == "echo")
+    { 
+      auto line = input.substr(pos + 1, redirect_out != -1 ? redirect_out - pos - 2 : -1);
+      bool in_single_quote = 0;
       bool in_double_quote = 0;
+     
+      std::string buffer;
+      buffer.reserve(1024*10);
+      int buf_i = 0;
 
       char prev = 0;
       for (int i = 0; i < line.length(); ++i)
@@ -47,14 +53,12 @@ int main()
         char c = line[i];
         if (not in_double_quote and c == '\'')
         {
-          single_quote_cnt++;
-          in_single_quote = !(single_quote_cnt % 2 == 0);
+          in_single_quote = not in_single_quote;
           continue;
         }
         if (c == '"')
         {
-          double_quote_cnt++;
-          in_double_quote = !(double_quote_cnt % 2 == 0);
+          in_double_quote = not in_double_quote;
           continue;
         }
         if (c == ' ' and prev == ' ' and not(in_single_quote or in_double_quote))
@@ -64,14 +68,32 @@ int main()
         if (c == '\\')
         {
           if (in_single_quote)
-            putchar(c);
+            buffer += c;
           
           c = line[++i];
         }
-        putchar(c);
+        buffer += c;
         prev = c;
       }
-      std::cout << '\n';
+      buffer += '\n';
+      if (not outfile.empty())
+      {
+        std::string mode = "w";
+        if (input[redirect_out + 1] == '>')
+        {
+          mode = "a";
+          outfile = outfile.substr(1);
+        }
+        FILE *out = fopen(outfile.data(), mode.c_str());
+        if (input[redirect_out - 1] != '2') /* stdout */
+          size_t written = fwrite(buffer.data(), 1, buffer.size(), out);
+        else
+          std::cout << buffer;
+
+        fclose(out);
+      }
+      else
+        std::cout << buffer;
       continue;
     }
 
