@@ -192,6 +192,16 @@ int main()
     if (redirect_out != -1)
         outfile = std::string_view(input.begin()+redirect_out+2, input.end());
 
+    std::string pipe_program = "";
+    if (redirect_out == -1)
+    {
+      redirect_out = input.find('|');
+      if (redirect_out != -1)
+      {
+        pipe_program = std::string(input.begin()+redirect_out+2, input.end());
+      }
+    }
+
     if (first_token == "echo")
     { 
       auto line = input.substr(pos + 1, redirect_out != -1 ? redirect_out - pos - 2 : -1);
@@ -246,6 +256,38 @@ int main()
           std::cout << buffer;
 
         fclose(out);
+      } else if (not pipe_program.empty())
+      {
+        int pipefd[2];
+        
+        if (pipe(pipefd) == -1)
+        {
+          perror("pipe");
+        	exit(EXIT_FAILURE);
+        }
+        int pipe_read_fd = pipefd[0];
+        int pipe_write_fd = pipefd[1];
+        pid_t writer_pid = fork();
+        if (writer_pid == 0)
+        { 
+          dup2(pipe_write_fd, STDOUT_FILENO);
+          close(pipe_read_fd);
+          std::cout << buffer << std::flush;
+          exit(0);
+        }
+        wait(0);
+        pid_t reader_pid = fork();
+        if (reader_pid == 0)
+        { 
+          dup2(pipe_read_fd, STDIN_FILENO);
+          close(pipe_write_fd);
+          std::system(pipe_program.c_str());
+          exit(0);
+        }
+        close(pipe_write_fd);
+        close(pipe_read_fd);
+        wait(0);
+        
       }
       else
         std::cout << buffer;
