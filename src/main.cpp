@@ -12,6 +12,7 @@
 #include <cstring>
 #include <vector>
 #include <unordered_set>
+#include <algorithm>
 
 #define raw_mode 0
 
@@ -32,12 +33,14 @@ void disable_raw_mode(const termios &original)
 }
 #endif
 
-std::vector<std::string> executables = {"echo", "cd", "exit", "pwd"};
+std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type"};
+std::vector<std::string> executables = builtins;
+std::vector<std::string> env_paths;
 
 void get_execuatables(std::string &env_path)
 {
   std::unordered_set<std::string> seen(executables.begin(), executables.end()); // Avoid duplicates
-  for (const auto path_range : std::views::split(env_path, ':'))
+  for (const auto path_range : env_paths)
   {
     std::string_view path_sv(path_range.begin(), path_range.end());
     if (path_sv.empty())
@@ -122,6 +125,36 @@ char **command_completion(const char *text, int start, int end)
   return nullptr;
 }
 
+void do_types(std::string_view input)
+{
+  int pos = input.find(' ', pos);
+  pos = input.find(' ', pos);
+  auto command = input.substr(pos + 1);
+
+  if (std::ranges::contains(builtins, command))
+  {
+    std::cout << command << " is a shell builtin" << '\n';
+    return;
+  }
+
+  for (const auto path : env_paths)
+  {
+    auto file_path = std::format("{}/{}", std::string_view(path), command);
+    if (std::filesystem::exists(file_path))
+    {
+      auto p = std::filesystem::status(file_path).permissions();
+      if ((p & std::filesystem::perms::owner_exec) != std::filesystem::perms::none ||
+          (p & std::filesystem::perms::group_exec) != std::filesystem::perms::none)
+      {
+        std::cout << command << " is " << file_path << '\n';
+        return;
+      }
+    }
+  }
+
+  std::cout << command << ": not found" << '\n';
+}
+
 int main()
 {
   // Flush after every std::cout / std:cerr
@@ -130,6 +163,7 @@ int main()
 
   rl_attempted_completion_function = command_completion;
   std::string env_path(std::getenv("PATH"));
+  env_paths = std::views::split(env_path, ':') | std::ranges::to<std::vector<std::string>>();
 
   get_execuatables(env_path);
 
@@ -172,7 +206,7 @@ int main()
     {
         add_history(line);
     }
-    std::string input(line);
+    std::string_view input(line);
 
     auto pos = input.find(' ');
     auto first_token = input.substr(0, pos);
@@ -296,45 +330,24 @@ int main()
 
     if (first_token == "type")
     {
-      pos = input.find(' ', pos);
+      do_types(input);
+      continue;
+    }
 
-      auto command = input.substr(pos + 1);
-
-      if (command == "echo" or command == "exit" or command == "type" or command == "pwd")
+    if (first_token == "history")
+    {
+      int start_index = 1;
+      if (input != "history")
       {
-        std::cout << command << " is a shell builtin" << '\n';
-        continue;
-      }
+        std::string_view num_str = input.substr(pos);
+        start_index = history_length - std::stoi(num_str.data()) + 1;
 
-      if (command == "cat" or command == "cp" or command == "mkdir")
-      {
-        if (std::filesystem::exists("/usr/bin/cat"))
-          std::cout << command << " is /usr/bin/" << command << '\n';
-        else
-          std::cout << command << " is /bin/" << command << '\n';
-        continue;
       }
-      if (command == "my_exe")
+      for (int i = start_index; i <= history_length; ++i)
       {
-        std::string env_path(std::getenv("PATH"));
-        for (const auto word : std::views::split(env_path, ':'))
-        {
-          auto file_path = std::format("{}/my_exe", std::string_view(word));
-          if (std::filesystem::exists(file_path))
-          {
-            auto p = std::filesystem::status(file_path).permissions();
-            if ((p & std::filesystem::perms::owner_exec) != std::filesystem::perms::none ||
-                (p & std::filesystem::perms::group_exec) != std::filesystem::perms::none)
-            {
-              std::cout << command << " is " << file_path << '\n';
-              break;
-            }
-          }
-        }
-        continue;
+      	HIST_ENTRY *entry = history_get(i);
+        std::cout << i <<  "\t" << entry->line << '\n';
       }
-
-      std::cout << command << ": not found" << '\n';
       continue;
     }
 
@@ -350,11 +363,11 @@ int main()
       if (!std::filesystem::exists(target_dir))
       {
         // println("cd: {}: No such file or directory", target_dir);
-        printf("cd: %s: No such file or directory\n", target_dir.c_str());
+        printf("cd: %s: No such file or directory\n", target_dir.data());
         continue;
       }
 
-      if (chdir(target_dir.c_str()) == 0)
+      if (chdir(target_dir.data()) == 0)
       {
         auto this_path = std::filesystem::current_path().string();
         if (this_path.starts_with("/private"))
@@ -367,13 +380,13 @@ int main()
     }
     if (first_token == "echo" or first_token == "exit" or first_token == "type" or first_token == "pwd")
     {
-      std::system(input.c_str());
+      std::system(input.data());
       continue;
     }
 
     bool bin_exist = false;
 
-    for (const auto word : std::views::split(env_path, ':'))
+    for (const auto word : env_paths)
     {
       auto bin_path = std::format("{}/{}", std::string_view(word), first_token);
       if (std::filesystem::exists(bin_path))
@@ -384,7 +397,7 @@ int main()
     }
     if (bin_exist)
     {
-      std::system(input.c_str());
+      std::system(input.data());
       continue;
     }
 
