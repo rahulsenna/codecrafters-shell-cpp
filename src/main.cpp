@@ -13,6 +13,7 @@
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
+#include <fstream>
 
 #define raw_mode 0
 
@@ -155,6 +156,41 @@ void do_types(std::string_view input)
   std::cout << command << ": not found" << '\n';
 }
 
+void write_history_to_file(const char *filename, bool append = true)
+{
+  // write_history(filename);
+  std::ofstream file = append ? std::ofstream(filename, std::ios::app) : std::ofstream(filename);
+
+  if (!file.is_open())
+  {
+    std::cerr << "Error: Cannot open " << filename << std::endl;
+    return;
+  }
+  for (int i = 1; i <= history_length; ++i)
+  {
+    HIST_ENTRY *entry = history_get(i);
+    file << entry->line << std::endl;
+  }
+  file.close();
+  clear_history();
+}
+
+void load_history_from_file(const char *filename)
+{
+  // read_history(filename);
+  std::ifstream file(filename);
+  if (!file.is_open())
+  {
+    std::cerr << "Error: Cannot open " << filename << std::endl;
+    return;
+  }
+  std::string line;
+  while (std::getline(file, line))
+    add_history(line.c_str());
+
+  file.close();
+}
+
 int main()
 {
   // Flush after every std::cout / std:cerr
@@ -166,6 +202,9 @@ int main()
   env_paths = std::views::split(env_path, ':') | std::ranges::to<std::vector<std::string>>();
 
   get_execuatables(env_path);
+  const char *hist = std::getenv("HISTFILE");
+  if (hist)
+    load_history_from_file(hist);
 
   while (1)
   {
@@ -336,23 +375,37 @@ int main()
 
     if (first_token == "history")
     {
+      auto args = std::views::split(input, ' ') | std::ranges::to<std::vector<std::string>>();
       int start_index = 1;
-      if (input != "history")
+      if (args.size() == 2)
       {
-        std::string_view num_str = input.substr(pos);
+        std::string_view num_str = args[1];
         start_index = history_length - std::stoi(num_str.data()) + 1;
-
+      }
+      else if (args.size() == 3 and args[1] == "-r")
+      {
+        load_history_from_file(args[2].c_str());
+        continue;
+      }
+      else if (args.size() == 3 and (args[1] == "-w" or args[1] == "-a"))
+      {
+        write_history_to_file(args[2].c_str());
+        continue;
       }
       for (int i = start_index; i <= history_length; ++i)
       {
-      	HIST_ENTRY *entry = history_get(i);
-        std::cout << i <<  "\t" << entry->line << '\n';
+        HIST_ENTRY *entry = history_get(i);
+        std::cout << i << "\t" << entry->line << '\n';
       }
       continue;
     }
 
     if (input == "exit 0")
+    {
+      if (hist)
+        write_history_to_file(hist, false);
       return 0;
+    }      
 
     if (first_token == "cd")
     {
