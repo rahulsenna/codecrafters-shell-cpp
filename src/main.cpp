@@ -15,6 +15,10 @@
 #include <algorithm>
 #include <fstream>
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
+
 #define raw_mode 0
 
 #if raw_mode
