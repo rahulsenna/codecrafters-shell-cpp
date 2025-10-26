@@ -130,7 +130,7 @@ char **command_completion(const char *text, int start, int end)
   return nullptr;
 }
 
-void do_types(std::string_view input)
+void do_types(std::string input)
 {
   int pos = input.find(' ', pos);
   pos = input.find(' ', pos);
@@ -249,7 +249,7 @@ int main()
     {
         add_history(line);
     }
-    std::string_view input(line);
+    std::string input(line);
 
     auto pos = input.find(' ');
     auto first_token = input.substr(0, pos);
