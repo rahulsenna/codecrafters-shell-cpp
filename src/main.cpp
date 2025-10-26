@@ -130,10 +130,25 @@ char **command_completion(const char *text, int start, int end)
   return nullptr;
 }
 
+std::string trim(const std::string &str)
+{
+  // Find the first non-whitespace character
+  size_t first = str.find_first_not_of(" \t\n\r\f\v");
+  if (std::string::npos == first)
+  { // If no non-whitespace character found (empty or all whitespace)
+    return str;
+  }
+
+  // Find the last non-whitespace character
+  size_t last = str.find_last_not_of(" \t\n\r\f\v");
+
+  // Extract the substring between the first and last non-whitespace characters
+  return str.substr(first, (last - first + 1));
+}
+
 void do_types(std::string input)
 {
-  int pos = input.find(' ', pos);
-  pos = input.find(' ', pos);
+  int pos = input.find(' ');
   auto command = input.substr(pos + 1);
 
   if (std::ranges::contains(builtins, command))
