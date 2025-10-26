@@ -121,7 +121,7 @@ char **command_completion(const char *text, int start, int end)
     {
       for (int i = 2; matches[i] != nullptr; i++) // if more than one matches (add one extra space)
       {
-        auto modified = std::string(matches[i]) + " ";
+        auto modified = std::string(matches[i]) + "";
         matches[i] = strdup(modified.c_str());;
       }
     }
