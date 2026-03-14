@@ -42,7 +42,7 @@ std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "ty
 std::vector<std::string> executables = builtins;
 std::vector<std::string> env_paths;
 
-void get_execuatables(std::string &env_path)
+void get_execuatables()
 {
   std::unordered_set<std::string> seen(executables.begin(), executables.end()); // Avoid duplicates
   for (const auto path_range : env_paths)
@@ -217,10 +217,9 @@ int main()
   std::cerr << std::unitbuf;
 
   rl_attempted_completion_function = command_completion;
-  std::string env_path(std::getenv("PATH"));
-  env_paths = std::views::split(env_path, ':') | std::ranges::to<std::vector<std::string>>();
+  env_paths = std::views::split(std::string(std::getenv("PATH")), ':') | std::ranges::to<std::vector<std::string>>();
 
-  get_execuatables(env_path);
+  get_execuatables();
   const char *hist = std::getenv("HISTFILE");
   if (hist)
     load_history_from_file(hist);
@@ -419,7 +418,7 @@ int main()
       continue;
     }
 
-    if (input == "exit 0")
+    if (input.starts_with("exit"))
     {
       if (hist)
         write_history_to_file(hist, false);
@@ -458,10 +457,12 @@ int main()
 
     bool bin_exist = false;
 
-    for (const auto word : env_paths)
+    for (auto exe: executables)
     {
-      auto bin_path = std::format("{}/{}", std::string_view(word), first_token);
-      if (std::filesystem::exists(bin_path))
+      int pos = 0;
+      if (input[0] == '"' or input[0] == '\'')
+        pos = 1; 
+      if (input.substr(pos).starts_with(exe))
       {
         bin_exist = true;
         break;
