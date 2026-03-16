@@ -274,7 +274,8 @@ int main()
     }
     if (input[0] == '"')
     {
-      first_token = "";
+      first_token.clear();
+      first_token.reserve(input.size());
       size_t i = 1;
       while (i < input.size() && input[i] != '"')
       {
