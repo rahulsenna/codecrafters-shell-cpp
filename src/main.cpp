@@ -274,8 +274,23 @@ int main()
     }
     if (input[0] == '"')
     {
-      pos = input.find('"', 1);
-      first_token = input.substr(1, pos - 1);
+      first_token = "";
+      size_t i = 1;
+      while (i < input.size() && input[i] != '"')
+      {
+        if (input[i] == '\\' && i + 1 < input.size())
+        {
+          char next = input[i + 1];
+          if (next == '\\' || next == '"' || next == '$' || next == '`')
+          {
+            first_token += next;
+            i += 2;
+            continue;
+          }
+        }
+        first_token += input[i++];
+      }
+      pos = i;
     }
 
     int redirect_out = input.find('>');
@@ -459,10 +474,7 @@ int main()
 
     for (auto exe: executables)
     {
-      int pos = 0;
-      if (input[0] == '"' or input[0] == '\'')
-        pos = 1; 
-      if (input.substr(pos).starts_with(exe))
+      if (first_token == exe)
       {
         bin_exist = true;
         break;
