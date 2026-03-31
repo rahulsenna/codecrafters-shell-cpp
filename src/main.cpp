@@ -483,6 +483,18 @@ int main()
     }
     if (bin_exist)
     {
+      if (input.back() == '&')
+      {
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+          input[input.size() - 1] = 0;
+          execl("/bin/sh", "sh", "-c", input.c_str(), nullptr);
+          perror("execl failed");
+          return 1;
+        }
+        std::cout << "[1] " << pid << '\n';
+      }
       std::system(input.data());
       continue;
     }
