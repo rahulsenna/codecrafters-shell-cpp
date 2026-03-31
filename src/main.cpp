@@ -20,6 +20,7 @@
 
 #include <sys/wait.h>
 #include <map>
+#include <set>
 
 struct Job
 {
@@ -30,6 +31,7 @@ struct Job
 
 std::map<int, Job> jobs;
 int job_counter = 1;
+std::set<int> free_nums = { 1 };
 
 
 #define raw_mode 0
@@ -242,7 +244,7 @@ void reap_jobs()
       char marker = ' ';
       if (num == plus_job)       marker = '+';
       else if (num == minus_job) marker = '-';
-
+      free_nums.insert(num);
       std::cout << "[" << num << "]" << marker << "  " << std::left << std::setw(21) << "Done" << job.command << "\n";
     }
   }
@@ -517,7 +519,10 @@ int main()
         int status;
         pid_t result = waitpid(job.pid, &status, WNOHANG);
         if (result > 0)
+        {
           job.status = "Done";
+          free_nums.insert(num);
+        }
       }
 
       int last = -1, second_last = -1;
@@ -562,8 +567,12 @@ int main()
           exit(1);
         }
 
-        jobs[job_counter] = { pid, input, "Running" };
-        std::cout << "[" << job_counter << "] " << pid << '\n';
+        int new_num = *free_nums.begin();
+        free_nums.erase(free_nums.begin());
+        if (free_nums.empty())
+          free_nums.insert(new_num + 1);
+        jobs[new_num] = { pid, input, "Running" };
+        std::cout << "[" << new_num << "] " << pid << '\n';
         job_counter++;
         continue;
       }
