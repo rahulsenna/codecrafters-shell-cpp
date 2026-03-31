@@ -223,6 +223,33 @@ void load_history_from_file(const char *filename)
   file.close();
 }
 
+void reap_jobs()
+{
+  int plus_job = jobs.empty() ? -1 : jobs.rbegin()->first;
+  int minus_job = jobs.size() >= 2 ? std::next(jobs.rbegin())->first : -1;
+
+  for (auto& [num, job] : jobs)
+  {
+    if (job.status == "Running")
+    {
+      int status;
+      if (waitpid(job.pid, &status, WNOHANG) > 0)
+        job.status = "Done";
+    }
+
+    if (job.status == "Done")
+    {
+      char marker = ' ';
+      if (num == plus_job)       marker = '+';
+      else if (num == minus_job) marker = '-';
+
+      std::cout << "[" << num << "]" << marker << "  " << std::left << std::setw(21) << "Done" << job.command << "\n";
+    }
+  }
+
+  std::erase_if(jobs, [](const auto& e) { return e.second.status == "Done"; });
+}
+
 int main()
 {
   // Flush after every std::cout / std:cerr
@@ -270,7 +297,7 @@ int main()
     std::cout << std::endl;
     disable_raw_mode(original);
 #endif
-
+    reap_jobs();
     char* line = readline("$ ");
     if (line && *line)
     {
