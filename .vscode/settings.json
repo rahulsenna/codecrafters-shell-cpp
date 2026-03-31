@@ -1,0 +1,7 @@
+{
+   "debug.showBreakpointsInOverviewRuler": true,
+  
+    "workspaceKeybindings.codecrafters.enabled": true,
+    "cSpell.enabled": false // setting can be anything you want
+
+}

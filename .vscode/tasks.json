@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "codecrafter test",
+      "command": "make test_cpp",
+      "type": "shell",
+      "args": [],
+      "options": {
+        "cwd": "${workspaceFolder}/../tester"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "presentation": {
+        "reveal": "always"
+      },
+      "group": "build"
+    }
+  ]
+}

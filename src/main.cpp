@@ -38,7 +38,7 @@ void disable_raw_mode(const termios &original)
 }
 #endif
 
-std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type"};
+std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type", "jobs"};
 std::vector<std::string> executables = builtins;
 std::vector<std::string> env_paths;
 
