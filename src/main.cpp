@@ -18,6 +18,19 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <sys/wait.h>
+#include <map>
+
+struct Job
+{
+  pid_t pid;
+  std::string command;
+  std::string status;
+};
+
+std::map<int, Job> jobs;
+int job_counter = 1;
+
 
 #define raw_mode 0
 
@@ -470,6 +483,34 @@ int main()
       std::system(input.data());
       continue;
     }
+    if (input == "jobs")
+    {
+      for (auto& [num, job] : jobs)
+      {
+        int status;
+        pid_t result = waitpid(job.pid, &status, WNOHANG);
+        if (result > 0)
+          job.status = "Done";
+      }
+
+      int last = -1, second_last = -1;
+      for (auto& [num, job] : jobs)
+      {
+        second_last = last;
+        last = num;
+      }
+
+      for (auto& [num, job] : jobs)
+      {
+        char marker = ' ';
+        if (num == last)        marker = '+';
+        else if (num == second_last) marker = '-';
+        std::cout << "[" << num << "]" << marker << "  " << std::left << std::setw(24) << job.status << job.command << "&\n";
+      }
+
+      std::erase_if(jobs, [](const auto& e) { return e.second.status == "Done"; });
+      continue;
+    }
 
     bool bin_exist = false;
 
@@ -485,15 +526,19 @@ int main()
     {
       if (input.back() == '&')
       {
+        input.pop_back();
         pid_t pid = fork();
         if (pid == 0)
         {
-          input[input.size() - 1] = 0;
           execl("/bin/sh", "sh", "-c", input.c_str(), nullptr);
           perror("execl failed");
-          return 1;
+          exit(1);
         }
-        std::cout << "[1] " << pid << '\n';
+
+        jobs[job_counter] = { pid, input, "Running" };
+        std::cout << "[" << job_counter << "] " << pid << '\n';
+        job_counter++;
+        continue;
       }
       std::system(input.data());
       continue;
