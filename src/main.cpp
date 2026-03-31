@@ -505,7 +505,7 @@ int main()
         char marker = ' ';
         if (num == last)        marker = '+';
         else if (num == second_last) marker = '-';
-        std::cout << "[" << num << "]" << marker << "  " << std::left << std::setw(24) << job.status << job.command << "&\n";
+        std::cout << "[" << num << "]" << marker << "  " << std::left << std::setw(24) << job.status << job.command << (job.status == "Running" ? "&" : "") << "\n";
       }
 
       std::erase_if(jobs, [](const auto& e) { return e.second.status == "Done"; });
