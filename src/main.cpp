@@ -21,6 +21,10 @@
 #include <sys/wait.h>
 #include <map>
 #include <set>
+#include <sstream>
+#include <unordered_map>
+#include <print>
+#include <format>
 
 struct Job
 {
@@ -53,7 +57,7 @@ void disable_raw_mode(const termios &original)
 }
 #endif
 
-std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type", "jobs"};
+std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type", "jobs", "complete"};
 std::vector<std::string> executables = builtins;
 std::vector<std::string> env_paths;
 
@@ -266,6 +270,7 @@ int main()
   if (hist)
     load_history_from_file(hist);
 
+  std::unordered_map<std::string, std::string> programmable_completions = {};
   while (1)
   {
 #if raw_mode
@@ -541,6 +546,24 @@ int main()
       }
 
       std::erase_if(jobs, [](const auto& e) { return e.second.status == "Done"; });
+      continue;
+    }
+    if (first_token == "complete")
+    {
+      std::istringstream iss(input);
+      std::vector<std::string>  args = {std::istream_iterator<std::string>(iss), {}};
+
+      if (args[1] == "-p")
+      {
+        if (programmable_completions.contains(args[2]))
+          println("complete -C '{}' {}", programmable_completions[args[2]], args[2]);
+        else
+          println("complete: {}: no completion specification", args[2]);
+      } else if (args[1] == "-C")
+      {
+        programmable_completions[args[3]] = std::string(args[2]);
+      }
+      
       continue;
     }
 
