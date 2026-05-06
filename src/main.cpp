@@ -129,8 +129,66 @@ char *command_generator(const char *text, int state)
   return nullptr;
 }
 
+
+std::string first_word_from_line(char* line)
+{
+  if (!line || *line == 0) return "";
+  char buf[256];
+  sscanf(line, "%255s", buf);
+  return std::string(buf);
+}
+
+char** run_completer_script(const std::string& script)
+{
+  FILE* pipe = popen(script.c_str(), "r");
+  if (!pipe) return nullptr;
+
+  std::vector<std::string> candidates;
+  char buf[4096];
+  while (fgets(buf, sizeof(buf), pipe))
+  {
+    std::string s(buf);
+
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+      s.pop_back();
+    if (!s.empty())
+      candidates.push_back(std::move(s));
+  }
+  pclose(pipe);
+
+  if (candidates.empty()) return nullptr;
+
+  char** matches = (char**) malloc((candidates.size() + 2) * sizeof(char*));
+  if (!matches) return nullptr;
+
+  // Compute longest common prefix across all candidates
+  std::string prefix = candidates[0];
+  for (size_t i = 1; i < candidates.size(); i++)
+  {
+    size_t j = 0;
+    while (j < prefix.size() && j < candidates[i].size()
+      && prefix[j] == candidates[i][j])
+      j++;
+    prefix.resize(j);
+  }
+
+  matches[0] = strdup(prefix.c_str());
+  for (size_t i = 0; i < candidates.size(); i++)
+    matches[i + 1] = strdup(candidates[i].c_str());
+  matches[candidates.size() + 1] = nullptr;
+
+  return matches;
+}
+
+std::unordered_map<std::string, std::string> programmable_completions = {};
+
 char **command_completion(const char *text, int start, int end)
 {
+  std::string command = first_word_from_line(rl_line_buffer);
+  std::string script = programmable_completions[command];
+  if (!script.empty())
+    return run_completer_script(script);
+
   if (start == 0)
   {
     char **matches = rl_completion_matches(text, command_generator);
@@ -138,10 +196,11 @@ char **command_completion(const char *text, int start, int end)
       std::cout << "\x07" << std::flush; // ring the bell
     else
     {
-      for (int i = 2; matches[i] != nullptr; i++) // if more than one matches (add one extra space)
+      for (int i = 1; matches[i] != nullptr; i++) // if more than one matches (add one extra space)
       {
-        auto modified = std::string(matches[i]) + "";
-        matches[i] = strdup(modified.c_str());;
+        char* original = matches[i];
+        matches[i] = strdup((std::string(original) + " ").c_str());
+        free(original);
       }
     }
     return matches;
@@ -270,7 +329,7 @@ int main()
   if (hist)
     load_history_from_file(hist);
 
-  std::unordered_map<std::string, std::string> programmable_completions = {};
+  
   while (1)
   {
 #if raw_mode
