@@ -140,7 +140,18 @@ std::string first_word_from_line(char* line)
 
 char** run_completer_script(const std::string& script)
 {
-  FILE* pipe = popen(script.c_str(), "r");
+  setenv("COMP_LINE", rl_line_buffer, 1);
+  setenv("COMP_POINT", std::to_string(rl_point).c_str(), 1);
+  
+  std::istringstream iss(rl_line_buffer);
+  std::vector<std::string>  args = { std::istream_iterator<std::string>(iss), {} };
+  if (rl_line_buffer[rl_point - 1] == ' ') args.push_back("");
+
+  std::string command = args[0];
+  std::string curr_word = args.back();
+  std::string prev_word = args[args.size() - 2];
+  std::string cmd = std::format("{} {} {} {}", script, command, curr_word, prev_word);
+  FILE* pipe = popen(cmd.c_str(), "r");
   if (!pipe) return nullptr;
 
   std::vector<std::string> candidates;
