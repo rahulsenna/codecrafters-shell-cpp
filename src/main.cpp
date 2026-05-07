@@ -26,6 +26,13 @@
 #include <print>
 #include <format>
 
+void replace_all(std::string& str, std::string_view from, std::string_view to)
+{
+  for (size_t pos = 0; (pos = str.find(from, pos)) != std::string::npos; pos += to.size())
+    str.replace(pos, from.size(), to);
+}
+
+
 struct Job
 {
   pid_t pid;
@@ -326,6 +333,28 @@ void reap_jobs()
 
   std::erase_if(jobs, [](const auto& e) { return e.second.status == "Done"; });
 }
+void expand_vars_with_brace(std::string& input)
+{
+  size_t var_begin;
+  while ((var_begin = input.find("${")) != -1)
+  {
+    size_t var_end = input.find('}', var_begin);
+    std::string var = input.substr(var_begin + 2, var_end - var_begin - 2);
+    input.replace(var_begin, var_end + 1 - var_begin, declare_map[var]);
+  }
+}
+
+void expand_vars(std::string& input)
+{
+  expand_vars_with_brace(input);
+  size_t var_begin;
+  while ((var_begin = input.find('$')) != -1)
+  {
+    size_t var_end = input.find(' ', var_begin);
+    std::string var = input.substr(var_begin + 1, var_end - var_begin - 1);
+    input.replace(var_begin, var_end - var_begin, declare_map[var]);
+  }
+}
 
 int main()
 {
@@ -382,6 +411,7 @@ int main()
         add_history(line);
     }
     std::string input(line);
+    expand_vars(input);
 
     auto pos = input.find(' ');
     auto first_token = input.substr(0, pos);
