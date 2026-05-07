@@ -350,7 +350,8 @@ void expand_vars(std::string& input)
   size_t var_begin;
   while ((var_begin = input.find('$')) != -1)
   {
-    size_t var_end = input.find(' ', var_begin);
+    size_t var_end = var_begin + 1;
+    while (var_end < input.size() && (std::isalnum(input[var_end]) || input[var_end] == '_')) ++var_end;
     std::string var = input.substr(var_begin + 1, var_end - var_begin - 1);
     input.replace(var_begin, var_end - var_begin, declare_map[var]);
   }
