@@ -632,6 +632,9 @@ int main()
       } else if (args[1] == "-C")
       {
         programmable_completions[args[3]] = std::string(args[2]);
+      } else if (args[1] == "-r")
+      {
+        programmable_completions.erase(args[2]);
       }
       
       continue;
