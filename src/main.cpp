@@ -57,7 +57,7 @@ void disable_raw_mode(const termios &original)
 }
 #endif
 
-std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type", "jobs", "complete"};
+std::vector<std::string> builtins = {"echo", "cd", "exit", "pwd", "history", "type", "jobs", "complete", "declare"};
 std::vector<std::string> executables = builtins;
 std::vector<std::string> env_paths;
 
@@ -192,6 +192,7 @@ char** run_completer_script(const std::string& script)
 }
 
 std::unordered_map<std::string, std::string> programmable_completions = {};
+std::unordered_map<std::string, std::string> declare_map = {};
 
 char **command_completion(const char *text, int start, int end)
 {
@@ -637,6 +638,29 @@ int main()
         programmable_completions.erase(args[2]);
       }
       
+      continue;
+    }
+    if (first_token == "declare")
+    {
+      std::istringstream iss(input);
+      std::vector<std::string>  args = { std::istream_iterator<std::string>(iss), {} };
+
+      if (args[1] == "-p")
+      {
+        if (declare_map.contains(args[2]))
+          println("declare -- {}=\"{}\"", args[2], declare_map[args[2]]);
+        else
+          println("declare: {}: not found", args[2]);
+      } else
+      {
+        char key[256], val[256];
+        sscanf(args[1].c_str(), "%255[^=]=%255s", key, val);
+        if (key[0] - '0' <= 9 or args[1].find('-') != -1)
+        {
+          println("declare: `{}': not a valid identifier", args[1]);
+        } else
+          declare_map[key] = val;
+      }
       continue;
     }
 
